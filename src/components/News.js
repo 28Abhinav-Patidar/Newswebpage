@@ -19,6 +19,7 @@ export default function News(props) {
  const updateNews = useCallback(async () => {
   setprog(10);
   setloading(true);
+  setpage(1);
 
   const url = `http://localhost:5000/news?category=${category}&page=1&pageSize=${pagesize}`;
   

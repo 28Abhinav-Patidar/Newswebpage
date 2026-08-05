@@ -15,23 +15,35 @@ export default function News(props) {
   const [page, setpage] = useState(1);
   const [loading, setloading] = useState(false);
   const [totalResults, settotalresults] = useState(0);
+  const [error, setError] = useState(null);
 
  const updateNews = useCallback(async () => {
-  setprog(10);
-  setloading(true);
-  setpage(1);
+   setprog(10);
+   setloading(true);
+   setError(null);
+   setpage(1);
 
-  const url = `http://localhost:5000/news?category=${category}&page=1&pageSize=${pagesize}`;
-  
-  let data = await fetch(url);
-  let parsedData = await data.json();
-
-  setarticles(parsedData.articles || []);   // ✅ FIX
-  settotalresults(parsedData.totalResults || 0); // ✅ FIX
-  setloading(false);
-
-  setprog(100);
-}, [category, pagesize, setprog]);
+    const apiKey = process.env.REACT_APP_NEWS_API_KEY;
+    const url = `https://newsapi.org/v2/top-headlines?category=${category}&apiKey=${apiKey}&page=1&pageSize=${pagesize}`;
+    
+    try {
+      let data = await fetch(url);
+      if (!data.ok) {
+        throw new Error(`Server status: ${data.status}`);
+      }
+      let parsedData = await data.json();
+      setarticles(parsedData.articles || []);
+      settotalresults(parsedData.totalResults || 0);
+    } catch (err) {
+      console.error("Failed to fetch news:", err);
+      setError("Failed to fetch news. Please check your API key and network connection.");
+      setarticles([]);
+      settotalresults(0);
+    } finally {
+     setloading(false);
+     setprog(100);
+   }
+ }, [category, pagesize, setprog]);
   useEffect(() => {
   updateNews();
 }, [updateNews]);
@@ -41,13 +53,20 @@ export default function News(props) {
   const nextPage = page + 1;
   setpage(nextPage);
 
-  const url = `http://localhost:5000/news?category=${category}&page=${nextPage}&pageSize=${pagesize}`;
+  const apiKey = process.env.REACT_APP_NEWS_API_KEY;
+  const url = `https://newsapi.org/v2/top-headlines?category=${category}&apiKey=${apiKey}&page=${nextPage}&pageSize=${pagesize}`;
 
-  let data = await fetch(url);
-  let parsedData = await data.json();
-
- setarticles(prev => prev.concat(parsedData.articles || []));
-settotalresults(parsedData.totalResults || 0);
+  try {
+    let data = await fetch(url);
+    if (!data.ok) {
+      throw new Error(`Server status: ${data.status}`);
+    }
+    let parsedData = await data.json();
+    setarticles(prev => prev.concat(parsedData.articles || []));
+    settotalresults(parsedData.totalResults || 0);
+  } catch (err) {
+    console.error("Failed to fetch more news:", err);
+  }
 };
 
   return (
@@ -55,6 +74,8 @@ settotalresults(parsedData.totalResults || 0);
       <h2 className='text-center'>
         Today's Headlines {props.category === "general" ? "" : `on ${capitalize(props.category)}`}
       </h2>
+
+      {error && <div className="alert alert-danger text-center my-3" role="alert">{error}</div>}
 
       {loading && <Spinner />}
 
